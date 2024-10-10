@@ -1,0 +1,3 @@
+0 Panasonic 12000 1.8E7 25 %
+1 Daikin 12000 1.6E7 35.0 C
+2 Samsung 16000 3.0E7
