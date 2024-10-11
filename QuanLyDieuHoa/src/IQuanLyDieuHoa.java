@@ -2,7 +2,9 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.*;
+import java.text.DecimalFormat;
 
+//public class IQuanLyDieuHoa extends JFrame implements ActionListener
 public class IQuanLyDieuHoa extends JFrame {
     private JTextField txtHangSanXuat, txtCongSuat, txtGiaBan;
     private JComboBox<String> cbLoaiDieuHoa;
@@ -11,6 +13,7 @@ public class IQuanLyDieuHoa extends JFrame {
     private DefaultTableModel model;
     private JPopupMenu popupMenu;
 
+    DecimalFormat currencyFormat = new DecimalFormat("#,###");
     public IQuanLyDieuHoa() {
         // Tạo JFrame
         setTitle("Quản lý Điều Hòa");
@@ -101,6 +104,17 @@ public class IQuanLyDieuHoa extends JFrame {
         btnXoa.addActionListener(e -> xoaDieuHoa());
         btnTimKiem.addActionListener(e -> timKiemDieuHoa());
 
+//        // Đăng ký sự kiện cho các nút nêú dùng implement
+//        btnThem.addActionListener(this);
+//        btnThem.addActionListener(new ActionListener() {
+//            @Override
+//            public void actionPerformed(ActionEvent e) {
+//                themDieuHoa();
+//            }
+//        });
+//        btnXoa.addActionListener(this);
+//        btnTimKiem.addActionListener(this);
+
         menuSave.addActionListener(e -> QuanLyDieuHoa.luudanhsach());
         menuLoadBinary.addActionListener(e -> {
             QuanLyDieuHoa.taidanhsach();
@@ -124,7 +138,7 @@ public class IQuanLyDieuHoa extends JFrame {
                     dieuHoa.getId(),
                     dieuHoa.getHangSanXuat(),
                     dieuHoa.getCongSuat(),
-                    dieuHoa.getGiaBan(),
+                    currencyFormat.format(dieuHoa.getGiaBan()),
                     "",
                     ""
             };
