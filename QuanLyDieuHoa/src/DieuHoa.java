@@ -10,14 +10,14 @@ public class DieuHoa implements Serializable {
     private int id;
 
     public DieuHoa() {
-        this.id = ++count;
+//        this.id = ++count;
     }
 
     public DieuHoa(String hangSanXuat, int congSuat, double giaBan) {
         this.hangSanXuat = hangSanXuat;
         this.congSuat = congSuat;
         this.giaBan = giaBan;
-        this.id = count++;
+//        this.id = count++;
     }
 
     public DieuHoa(int id, String hangSanXuat, int congSuat, double giaBan) {

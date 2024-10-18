@@ -4,7 +4,7 @@ import java.util.Scanner;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 
-public class QuanLyDieuHoa {
+public class ConsoleManager {
     public static ArrayList<DieuHoa> danhSachDieuHoa = new ArrayList<>();
     private static String FILE_PATH = "danhSachDieuHoa.dat";
     private static String pathtxt = "danhSachDieuHoa.txt";

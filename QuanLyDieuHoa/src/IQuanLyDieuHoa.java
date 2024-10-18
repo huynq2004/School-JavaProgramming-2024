@@ -4,14 +4,15 @@ import java.awt.*;
 import java.awt.event.*;
 import java.text.DecimalFormat;
 
-//public class IQuanLyDieuHoa extends JFrame implements ActionListener
 public class IQuanLyDieuHoa extends JFrame {
     private JTextField txtHangSanXuat, txtCongSuat, txtGiaBan;
     private JComboBox<String> cbLoaiDieuHoa;
-    private JButton btnThem, btnXoa, btnTimKiem;
+    private JButton btnThem, btnXoa, btnSua, btnTimKiem;
     private JTable tblDieuHoa;
-    private DefaultTableModel model;
+    private NonEditableTableModel model;
     private JPopupMenu popupMenu;
+    private JProgressBar progressBar; // Thanh tiến độ
+    private JLabel lblStatus;
 
     DecimalFormat currencyFormat = new DecimalFormat("#,###");
     public IQuanLyDieuHoa() {
@@ -60,35 +61,33 @@ public class IQuanLyDieuHoa extends JFrame {
         gbc.gridx = 1;
         cbLoaiDieuHoa = new JComboBox<>(new String[]{"Điều Hòa", "Điều Hòa Inverter", "Điều Hòa Hai Chiều"});
         panelInput.add(cbLoaiDieuHoa, gbc);
-
         add(panelInput, BorderLayout.NORTH);
 
         //Bảng hiển thị điều hòa
         String[] columnNames = {"ID", "Hãng sản xuất", "Công suất", "Giá bán", "Mức tiết kiệm điện", "Nhiệt độ làm nóng tối đa"};
-        model = new DefaultTableModel(columnNames, 0);
+        model = new NonEditableTableModel(columnNames, 0);
         tblDieuHoa = new JTable(model);
         JScrollPane scrollPane = new JScrollPane(tblDieuHoa);
         add(scrollPane, BorderLayout.CENTER);
 
+
         //Các nút điều khiển
-        JPanel panelButtons = new JPanel(new FlowLayout()); // Sử dụng FlowLayout để căn giữa các nút
+        JPanel panelButtons = new JPanel(new FlowLayout());
         btnThem = new JButton("Thêm");
         btnXoa = new JButton("Xóa");
-        btnTimKiem = new JButton("Tìm kiếm");
+        btnSua = new JButton("Sửa");
+        btnTimKiem = new JButton("Tìm kiếm theo hãng sản xuất");
         panelButtons.add(btnThem);
         panelButtons.add(btnXoa);
+        panelButtons.add(btnSua);
         panelButtons.add(btnTimKiem);
         add(panelButtons, BorderLayout.SOUTH);
 
         //Tạo menu chuột phải
         popupMenu = new JPopupMenu();
-        JMenuItem menuSave = new JMenuItem("Lưu danh sách");
-        JMenuItem menuLoadBinary = new JMenuItem("Tải từ file nhị phân");
-        JMenuItem menuLoadText = new JMenuItem("Tải từ file văn bản");
+        JMenuItem menuLoad = new JMenuItem("Load danh sách từ CSDL");
 
-        popupMenu.add(menuSave);
-        popupMenu.add(menuLoadBinary);
-        popupMenu.add(menuLoadText);
+        popupMenu.add(menuLoad);
 
         //click chuột phải ra menu
         addMouseListener(new MouseAdapter() {
@@ -102,29 +101,13 @@ public class IQuanLyDieuHoa extends JFrame {
         // Xử lý sự kiện cho các nút bấm và menu chuột phải
         btnThem.addActionListener(e -> themDieuHoa());
         btnXoa.addActionListener(e -> xoaDieuHoa());
+        btnSua.addActionListener(e -> suaDieuHoa());
         btnTimKiem.addActionListener(e -> timKiemDieuHoa());
-
-//        // Đăng ký sự kiện cho các nút nêú dùng implement
-//        btnThem.addActionListener(this);
-//        btnThem.addActionListener(new ActionListener() {
-//            @Override
-//            public void actionPerformed(ActionEvent e) {
-//                themDieuHoa();
-//            }
-//        });
-//        btnXoa.addActionListener(this);
-//        btnTimKiem.addActionListener(this);
-
-        menuSave.addActionListener(e -> QuanLyDieuHoa.luudanhsach());
-        menuLoadBinary.addActionListener(e -> {
-            QuanLyDieuHoa.taidanhsach();
+        menuLoad.addActionListener(e -> {
+            ConsoleManager.danhSachDieuHoa.clear();
+            ConsoleManager.danhSachDieuHoa = DBManager.loadFromDatabase(this, 0);
             updateTable();
         });
-        menuLoadText.addActionListener(e -> {
-            QuanLyDieuHoa.taidstxt();
-            updateTable();
-        });
-
 
     }
 
@@ -133,7 +116,7 @@ public class IQuanLyDieuHoa extends JFrame {
         DefaultTableModel model = (DefaultTableModel) tblDieuHoa.getModel();
         model.setRowCount(0); // Xóa toàn bộ dòng hiện tại
 
-        for (DieuHoa dieuHoa : QuanLyDieuHoa.danhSachDieuHoa) {
+        for (DieuHoa dieuHoa : ConsoleManager.danhSachDieuHoa) {
             Object[] rowData = {
                     dieuHoa.getId(),
                     dieuHoa.getHangSanXuat(),
@@ -229,12 +212,13 @@ public class IQuanLyDieuHoa extends JFrame {
         }
 
         if (dieuHoa != null) {
-            QuanLyDieuHoa.danhSachDieuHoa.add(dieuHoa);
+            DBManager.themDieuHoa(dieuHoa);
+            ConsoleManager.danhSachDieuHoa = DBManager.loadFromDatabase(this, 1);
             updateTable(); // Cập nhật bảng sau khi thêm điều hòa
         }
     }
 
-    //Xóa điều hòa người dùng chọn trên dòng
+    //Xóa điều hòa
     private void xoaDieuHoa() {
         int selectedRow = tblDieuHoa.getSelectedRow(); // Lấy dòng được chọn
 
@@ -244,27 +228,130 @@ public class IQuanLyDieuHoa extends JFrame {
             return;
         }
 
-        // Xóa khỏi danh sách điều hòa dựa trên vị trí dòng được chọn
+        // Lấy ID điều hòa từ dòng được chọn
         int idDieuHoa = (int) tblDieuHoa.getValueAt(selectedRow, 0); // Giả sử cột 0 chứa ID
 
-        boolean daXoa = false;
-        for (int i = 0; i < QuanLyDieuHoa.danhSachDieuHoa.size(); i++) {
-            if (QuanLyDieuHoa.danhSachDieuHoa.get(i).getId() == idDieuHoa) {
-                QuanLyDieuHoa.danhSachDieuHoa.remove(i);
-                daXoa = true;
-                break;
+        // Hiển thị hộp thoại xác nhận xóa
+        int confirm = JOptionPane.showConfirmDialog(null, "Bạn có chắc chắn muốn xóa điều hòa có ID: " + idDieuHoa + "?",
+                "Xác nhận xóa", JOptionPane.YES_NO_OPTION);
+
+        if (confirm == JOptionPane.YES_OPTION) {
+            // Xóa điều hòa khỏi cơ sở dữ liệu
+            boolean daXoaThanhCong = DBManager.xoaDieuHoa(idDieuHoa);
+
+            // Nếu xóa thành công, cập nhật lại bảng
+            if (daXoaThanhCong) {
+                DefaultTableModel model = (DefaultTableModel) tblDieuHoa.getModel();
+                model.removeRow(selectedRow); // Cập nhật bảng sau khi xóa dòng
+                JOptionPane.showMessageDialog(null, "Đã xóa điều hòa có ID: " + idDieuHoa);
+            } else {
+                JOptionPane.showMessageDialog(null, "Xóa điều hòa thất bại. Vui lòng thử lại.");
+            }
+        }
+    }
+
+    //Sửa điều hòa
+    private void suaDieuHoa(){
+        int selectedRow = tblDieuHoa.getSelectedRow();
+
+        if (selectedRow == -1) {
+            // Nếu không có dòng nào được chọn
+            JOptionPane.showMessageDialog(null, "Vui lòng chọn một dòng để sửa.");
+            return;
+        }
+
+        // Lấy thông tin từ các cột liên quan
+        int id = Integer.parseInt(tblDieuHoa.getValueAt(selectedRow, 0).toString());
+        String hangSanXuat = (String) tblDieuHoa.getValueAt(selectedRow, 1);
+        int congSuat = Integer.parseInt(tblDieuHoa.getValueAt(selectedRow, 2).toString());
+        String giaBanStr = tblDieuHoa.getValueAt(selectedRow, 3).toString();
+        double giaBan = Double.parseDouble(giaBanStr.replace(",", "")); // Xử lý chuỗi giá bán về dạng số
+
+        // Kiểm tra xem dòng này là Điều Hòa Inverter hay Điều Hòa Hai Chiều
+        String mucTietKiemDienStr = (String) tblDieuHoa.getValueAt(selectedRow, 4);
+        String nhietDoLamNongToiDaStr = (String) tblDieuHoa.getValueAt(selectedRow, 5);
+
+        // Các trường nhập liệu chung cho tất cả loại điều hòa
+        JTextField txtHangSanXuat = new JTextField(hangSanXuat);
+        JTextField txtCongSuat = new JTextField(String.valueOf(congSuat));
+        JTextField txtGiaBan = new JTextField(String.valueOf(giaBan));
+
+        // Kiểm tra loại điều hòa và tạo các trường nhập liệu bổ sung nếu cần
+        JTextField txtMucTietKiemDien = null;
+        JTextField txtnhietDoLamNongToiDa = null;
+
+        if (mucTietKiemDienStr != null && !mucTietKiemDienStr.isEmpty()) {
+            // Điều Hòa Inverter: Thêm trường Mức tiết kiệm điện
+            txtMucTietKiemDien = new JTextField(mucTietKiemDienStr.replace("%", ""));
+        }
+
+        if (nhietDoLamNongToiDaStr != null && !nhietDoLamNongToiDaStr.isEmpty()) {
+            // Điều Hòa Hai Chiều: Thêm trường Nhiệt độ làm nóng tối đa
+            txtnhietDoLamNongToiDa = new JTextField(nhietDoLamNongToiDaStr.replace("độ C", ""));
+        }
+
+        // Tạo panel chứa các trường nhập liệu
+        JPanel panel = new JPanel(new GridLayout(0, 2));
+        panel.add(new JLabel("Hãng sản xuất:"));
+        panel.add(txtHangSanXuat);
+        panel.add(new JLabel("Công suất:"));
+        panel.add(txtCongSuat);
+        panel.add(new JLabel("Giá bán:"));
+        panel.add(txtGiaBan);
+
+        if (txtMucTietKiemDien != null) {
+            // Thêm trường Mức tiết kiệm điện nếu là Điều Hòa Inverter
+            panel.add(new JLabel("Mức tiết kiệm điện (%):"));
+            panel.add(txtMucTietKiemDien);
+        }
+
+        if (txtnhietDoLamNongToiDa != null) {
+            // Thêm trường Nhiệt độ làm nóng tối đa nếu là Điều Hòa Hai Chiều
+            panel.add(new JLabel("Nhiệt độ làm nóng tối đa (°C):"));
+            panel.add(txtnhietDoLamNongToiDa);
+        }
+
+        // Hiển thị hộp thoại cho người dùng nhập liệu
+        int result = JOptionPane.showConfirmDialog(null, panel, "Sửa thông tin Điều Hòa", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+
+        if (result == JOptionPane.OK_OPTION) {
+            // Lấy thông tin mới từ các trường nhập liệu
+            try {
+                String hangMoi = txtHangSanXuat.getText();
+                int congSuatMoi = Integer.parseInt(txtCongSuat.getText());
+                double giaBanMoi = Double.parseDouble(txtGiaBan.getText());
+
+                if (txtMucTietKiemDien != null) {
+                    // Nếu là Điều Hòa Inverter
+                    int mucTietKiemDienMoi = Integer.parseInt(txtMucTietKiemDien.getText());
+                    DieuHoaInverter dieuHoaInverter = new DieuHoaInverter(id, hangMoi, congSuatMoi, giaBanMoi, mucTietKiemDienMoi);
+
+                    // Cập nhật cơ sở dữ liệu và giao diện
+                    DBManager.suaDieuHoa(dieuHoaInverter);
+                } else if (txtnhietDoLamNongToiDa != null) {
+                    // Nếu là Điều Hòa Hai Chiều
+                    double nhietDoLamNongMoi = Double.parseDouble(txtnhietDoLamNongToiDa.getText());
+                    DieuHoaHaiChieu dieuHoaHaiChieu = new DieuHoaHaiChieu(id, hangMoi, congSuatMoi, giaBanMoi, nhietDoLamNongMoi);
+
+                    // Cập nhật cơ sở dữ liệu và giao diện
+                    DBManager.suaDieuHoa(dieuHoaHaiChieu);
+                } else {
+                    // Nếu là Điều Hòa thông thường
+                    DieuHoa dieuHoa = new DieuHoa(id, hangMoi, congSuatMoi, giaBanMoi);
+
+                    // Cập nhật cơ sở dữ liệu và giao diện
+                    DBManager.suaDieuHoa(dieuHoa);
+                }
+
+                // Cập nhật bảng
+                ConsoleManager.danhSachDieuHoa = DBManager.loadFromDatabase(this, 1);
+                updateTable();
+
+            } catch (NumberFormatException e) {
+                JOptionPane.showMessageDialog(this, "Dữ liệu không hợp lệ! Vui lòng nhập đúng định dạng cho các trường số.");
             }
         }
 
-        if (daXoa) {
-            // Xóa dòng khỏi model của JTable
-            DefaultTableModel model = (DefaultTableModel) tblDieuHoa.getModel();
-            model.removeRow(selectedRow); // Cập nhật bảng sau khi xóa
-
-            JOptionPane.showMessageDialog(null, "Đã xóa điều hòa có ID: " + idDieuHoa);
-        } else {
-            JOptionPane.showMessageDialog(null, "Không tìm thấy điều hòa với ID: " + idDieuHoa);
-        }
     }
 
     //Tìm điều hòa
@@ -282,7 +369,8 @@ public class IQuanLyDieuHoa extends JFrame {
         DefaultTableModel model = (DefaultTableModel) tblDieuHoa.getModel();
         model.setRowCount(0); // Xóa toàn bộ dòng hiện tại để hiển thị kết quả mới
 
-        for (DieuHoa dieuHoa : QuanLyDieuHoa.danhSachDieuHoa) {
+        ConsoleManager.danhSachDieuHoa = DBManager.timKiemDieuHoa(hangSanXuat);
+        for (DieuHoa dieuHoa : ConsoleManager.danhSachDieuHoa) {
             if (dieuHoa.getHangSanXuat().equalsIgnoreCase(hangSanXuat)) {
                 // Hiển thị điều hòa tìm được trong bảng (JTable)
                 Object[] rowData = {
@@ -312,7 +400,6 @@ public class IQuanLyDieuHoa extends JFrame {
             JOptionPane.showMessageDialog(null, "Không tìm thấy điều hòa của hãng: " + hangSanXuat);
         }
     }
-
 
 
     public static void main(String[] args) {
