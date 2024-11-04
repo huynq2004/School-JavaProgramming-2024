@@ -5,7 +5,7 @@ import javax.swing.JOptionPane;
 
 public class DBManager {
 
-    // Hàm kết nối cơ sở dữ liệu
+    //kết nối cơ sở dữ liệu
     private static Connection connect() {
 
         try{
@@ -25,7 +25,7 @@ public class DBManager {
         return conn;
     }
 
-    // Hàm load danh sách điều hòa từ database
+    //load danh sách điều hòa từ database
     public static ArrayList<DieuHoa> loadFromDatabase(IQuanLyDieuHoa parent, int sign) {
         ArrayList<DieuHoa> danhSachDieuHoa = new ArrayList<>();
         Connection conn = connect();
