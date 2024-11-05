@@ -48,6 +48,7 @@ public class GUI_findHV extends JFrame {
         Find.addActionListener(e -> timKiem());
         loadDS();
 
+
     }
 
     private void loadDS() {
@@ -91,5 +92,6 @@ public class GUI_findHV extends JFrame {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new GUI_findHV().setVisible(true));
     }
+
 
 }
